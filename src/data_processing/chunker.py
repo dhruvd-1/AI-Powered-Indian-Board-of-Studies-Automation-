@@ -332,80 +332,63 @@ class UnitContentProcessor:
         }
 
 
-def run_step2_demo(unit_pdfs: Dict[str, List[str]]):
-    """
-    Demo function to test Step 2 on sample PDFs.
-    
-    Args:
-        unit_pdfs: Dict mapping unit_id to list of PDF filenames
-                   Example: {"unit_1": ["unit1_notes.pdf", "unit1_textbook.pdf"]}
-    """
-    from config.settings import RAW_DATA_DIR
+if __name__ == "__main__":
+    import sys
+    from config.settings import RAW_DATA_DIR, PROCESSED_DATA_DIR
     
     print("\n" + "="*60)
-    print("STEP 2: DOCUMENT CHUNKING + METADATA TAGGING")
+    print("DOCUMENT CHUNKING + METADATA TAGGING")
     print("="*60 + "\n")
     
-    all_chunks = []
-    statistics = []
+    # Get all PDFs from raw directory
+    pdf_files = list(RAW_DATA_DIR.glob("*.pdf"))
     
-    # Process each unit
-    for unit_id, pdf_filenames in unit_pdfs.items():
-        # Get full paths
-        pdf_paths = [RAW_DATA_DIR / fname for fname in pdf_filenames]
-        
-        # Check if files exist
-        missing = [p for p in pdf_paths if not p.exists()]
-        if missing:
-            print(f"⚠️ Missing files for {unit_id}:")
-            for p in missing:
-                print(f"   - {p}")
-            continue
-        
-        # Process unit
-        unit_name = unit_id.replace('_', ' ').title()
-        processor = UnitContentProcessor(unit_id, unit_name)
-        chunks = processor.process_pdfs(pdf_paths)
-        
-        all_chunks.extend(chunks)
-        statistics.append(processor.get_statistics())
+    if not pdf_files:
+        print(f"❌ No PDF files found in {RAW_DATA_DIR}")
+        print("   Please add PDF files to process.")
+        sys.exit(1)
     
-    # Save all chunks to single file
-    if all_chunks:
+    print(f"Found {len(pdf_files)} PDF file(s):\n")
+    for pdf in pdf_files:
+        print(f"  - {pdf.name}")
+    
+    # Check for syllabus structure
+    structure_files = list(PROCESSED_DATA_DIR.glob("*_structure.json"))
+    if not structure_files:
+        print("\n⚠️  No syllabus structure found. Processing all PDFs as general content.")
+        unit_id = "general"
+        unit_name = "General Content"
+    else:
+        # Use first structure file to get unit info
+        print(f"\n✓ Using syllabus structure: {structure_files[0].name}")
+        unit_id = "unit_1"
+        unit_name = "Unit 1"
+    
+    # Process PDFs
+    processor = UnitContentProcessor(unit_id, unit_name)
+    chunks = processor.process_pdfs(pdf_files)
+    
+    if chunks:
+        # Save chunks
         chunker = DocumentChunker()
-        output_path = chunker.save_chunks(all_chunks)
+        output_path = chunker.save_chunks(chunks)
+        
+        stats = processor.get_statistics()
         
         print("\n" + "="*60)
         print("📊 CHUNKING STATISTICS")
         print("="*60)
-        
-        for stats in statistics:
-            print(f"\n{stats['unit_name']}:")
-            print(f"  - Chunks: {stats['total_chunks']}")
-            print(f"  - Avg chunk size: {stats['avg_chunk_size']} chars")
-            print(f"  - Source files: {stats['num_source_files']}")
-            print(f"  - Pages processed: {stats['num_pages_processed']}")
+        print(f"\n{stats['unit_name']}:")
+        print(f"  - Chunks: {stats['total_chunks']}")
+        print(f"  - Avg chunk size: {stats['avg_chunk_size']} chars")
+        print(f"  - Source files: {stats['num_source_files']}")
+        print(f"  - Pages processed: {stats['num_pages_processed']}")
         
         print(f"\n{'='*60}")
-        print(f"✅ STEP 2 COMPLETE")
-        print(f"   Total chunks: {len(all_chunks)}")
+        print(f"✅ CHUNKING COMPLETE")
+        print(f"   Total chunks: {len(chunks)}")
         print(f"   Output: {output_path}")
         print("="*60 + "\n")
-        
-        return all_chunks, statistics
     else:
-        print("❌ No chunks generated. Check if PDFs exist in data/raw/")
-        return None, None
-
-
-if __name__ == "__main__":
-    # Example: Process sample PDFs
-    # Place your lecture notes in data/raw/ with these names
-    
-    unit_pdfs = {
-        "unit_1": ["unit1_lecture_notes.pdf"],
-        "unit_2": ["unit2_lecture_notes.pdf"],
-        # Add more units as needed
-    }
-    
-    run_step2_demo(unit_pdfs)
+        print("\n❌ No chunks generated. Check PDF content.")
+        sys.exit(1)

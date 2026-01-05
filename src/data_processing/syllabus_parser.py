@@ -317,34 +317,31 @@ class SyllabusParser:
         return output_path
 
 
-def run_step1_demo(syllabus_filename: str):
-    """
-    Demo function to test Step 1 on AIML syllabus.
+if __name__ == "__main__":
+    import sys
     
-    Args:
-        syllabus_filename: Name of syllabus PDF in data/raw/
-    """
-    # Path to syllabus PDF
+    if len(sys.argv) < 2:
+        print("Usage: python syllabus_parser.py <syllabus_pdf_filename>")
+        print(f"Example: python syllabus_parser.py ArtificialIntelligence_Syllabus.pdf")
+        sys.exit(1)
+    
+    syllabus_filename = sys.argv[1]
     pdf_path = RAW_DATA_DIR / syllabus_filename
     
     if not pdf_path.exists():
         print(f"❌ Syllabus not found: {pdf_path}")
         print(f"   Please place '{syllabus_filename}' in: {RAW_DATA_DIR}")
-        return
+        sys.exit(1)
     
     # Parse syllabus
+    print(f"Parsing syllabus: {syllabus_filename}")
     parser = SyllabusParser(pdf_path)
     structured_data = parser.parse()
     
     # Save to JSON
     output_path = parser.save_to_json()
     
-    print(f"\n📊 Preview of extracted data:")
-    print(json.dumps(structured_data, indent=2)[:1000] + "...\n")
-    
-    return structured_data
-
-
-if __name__ == "__main__":
-    # Test Step 1 with AIML syllabus
-    run_step1_demo("ArtificialIntelligence_Syllabus_2022Scheme.pdf")
+    print(f"\n✅ Syllabus parsed successfully")
+    print(f"   Output: {output_path}")
+    print(f"   Units: {len(structured_data.get('units', []))}")
+    print(f"   COs: {len(structured_data.get('course_outcomes', []))}")
