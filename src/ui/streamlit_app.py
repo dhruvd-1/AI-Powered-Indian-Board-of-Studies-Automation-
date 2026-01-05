@@ -4,8 +4,14 @@ Step 20: Streamlit Web UI
 Complete faculty interface for question generation, review, and paper creation.
 """
 
-import streamlit as st
+import sys
 from pathlib import Path
+
+# Add project root to Python path
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+import streamlit as st
 import json
 from datetime import datetime
 
