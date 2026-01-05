@@ -506,7 +506,7 @@ if __name__ == "__main__":
         print("="*60)
         print(f"\n{stats['unit_name']}:")
         print(f"  - Chunks: {stats['total_chunks']}")
-        print(f"  - Avg chunk size: {stats['avg_chunk_size']} chars")
+        print(f"  - Avg chunk size: {stats.get('avg_chunk_size_chars', 'N/A')} chars")
         print(f"  - Source files: {stats['num_source_files']}")
         print(f"  - Pages processed: {stats['num_pages_processed']}")
         

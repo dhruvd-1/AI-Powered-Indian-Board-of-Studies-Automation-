@@ -52,16 +52,17 @@ class ChromaDBStore(VectorStore):
         """
         try:
             import chromadb
-            from chromadb.config import Settings
             
             self.collection_name = collection_name
             self.persist_directory = persist_directory
             
             # Create persistent client
-            self.client = chromadb.Client(Settings(
-                persist_directory=str(persist_directory),
-                anonymized_telemetry=False
-            ))
+            self.client = chromadb.PersistentClient(path=str(persist_directory))
+            
+            # Log existing collections for debugging
+            existing_collections = self.client.list_collections()
+            if existing_collections:
+                print(f"  ℹ️  Found {len(existing_collections)} existing collection(s): {[c.name for c in existing_collections]}")
             
             # Get or create collection
             self.collection = self.client.get_or_create_collection(
@@ -69,7 +70,9 @@ class ChromaDBStore(VectorStore):
                 metadata={"hnsw:space": "cosine"}  # Use cosine similarity
             )
             
-            print(f"  ✓ ChromaDB collection '{collection_name}' ready")
+            # Log collection count
+            count = self.collection.count()
+            print(f"  ✓ ChromaDB collection '{collection_name}' ready ({count} documents)")
             
         except ImportError:
             raise ImportError(
@@ -136,6 +139,11 @@ class ChromaDBStore(VectorStore):
     def get_count(self) -> int:
         """Get total number of chunks in collection."""
         return self.collection.count()
+    
+    def list_all_collections(self):
+        """List all collections in the ChromaDB database for diagnostics."""
+        collections = self.client.list_collections()
+        return [(c.name, c.count()) for c in collections]
 
 
 class FAISSStore(VectorStore):
@@ -282,7 +290,11 @@ class VectorStoreManager:
         
         # Determine which backend to use
         self.backend = self._select_backend(use_chromadb)
-        print(f"🗄️  Using vector store backend: {self.backend}\n")
+        print(f"🗄️  Using vector store backend: {self.backend}")
+        
+        # Auto-discover existing stores
+        self._discover_existing_stores()
+        print()
     
     def _select_backend(self, prefer_chromadb: bool) -> str:
         """
@@ -311,6 +323,26 @@ class VectorStoreManager:
                 "  - ChromaDB: pip install chromadb\n"
                 "  - FAISS: pip install faiss-cpu"
             )
+    
+    def _discover_existing_stores(self):
+        """Auto-discover and load existing vector stores."""
+        if not VECTOR_DB_DIR.exists():
+            return
+        
+        unit_dirs = [d for d in VECTOR_DB_DIR.iterdir() if d.is_dir()]
+        if not unit_dirs:
+            return
+        
+        print(f"🔍 Discovering existing vector stores in {VECTOR_DB_DIR}")
+        for unit_dir in unit_dirs:
+            unit_id = unit_dir.name
+            try:
+                store = self.get_store(unit_id)
+                if store:
+                    count = store.get_count()
+                    print(f"   ✓ Loaded {unit_id}: {count} documents")
+            except Exception as e:
+                print(f"   ⚠️  Failed to load {unit_id}: {e}")
     
     def create_unit_store(self, unit_id: str) -> VectorStore:
         """
@@ -342,6 +374,7 @@ class VectorStoreManager:
     def get_store(self, unit_id: str) -> Optional[VectorStore]:
         """
         Get existing vector store for a unit.
+        Automatically loads from disk if not in memory.
         
         Args:
             unit_id: Unit identifier
@@ -349,7 +382,26 @@ class VectorStoreManager:
         Returns:
             VectorStore instance or None if not found
         """
-        return self.stores.get(unit_id)
+        # Check if already loaded
+        if unit_id in self.stores:
+            return self.stores[unit_id]
+        
+        # Try to load from disk
+        unit_dir = VECTOR_DB_DIR / unit_id
+        if unit_dir.exists():
+            # Reconnect to existing store
+            if self.backend == "chromadb":
+                store = ChromaDBStore(unit_id, unit_dir)
+            else:  # faiss
+                store = FAISSStore(
+                    unit_id,
+                    unit_dir,
+                    dimension=self.embedding_model.get_dimension()
+                )
+            self.stores[unit_id] = store
+            return store
+        
+        return None
     
     def build_from_chunks(self, chunks_file: Path):
         """

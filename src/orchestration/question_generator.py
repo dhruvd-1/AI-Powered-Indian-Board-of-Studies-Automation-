@@ -100,7 +100,7 @@ class QuestionGenerator:
         print("Step 2/6: Drafting")
         draft_result = self.drafter.process(
             retrieved_chunks=chunks,
-            unit_name=unit['title'],
+            unit_name=unit['unit_name'],
             course_name=self.syllabus['course_info']['course_name'],
             co_description=co['description'],
             bloom_level=bloom_level,
@@ -136,7 +136,7 @@ class QuestionGenerator:
         print("Step 4/6: Validation")
         validation = self.guardian.process(
             question=question_text,
-            unit_name=unit['title'],
+            unit_name=unit['unit_name'],
             unit_topics=unit['topics'],
             retrieved_chunks=chunks
         )
@@ -176,12 +176,24 @@ class QuestionGenerator:
         print(f"✅ GENERATION COMPLETE")
         print(f"{'='*60}\n")
         
+        # Get saved question for complete data
+        saved_question = self.db.get_question(question_id)
+        
         return {
             'question_id': question_id,
+            'id': question_id,
             'question_text': question_text,
+            'unit_id': unit['unit_id'],
+            'unit_name': unit['unit_name'],
+            'primary_co': pedagogy_tags['primary_co'],
+            'bloom_level': pedagogy_tags['verified_bloom_level'],
+            'difficulty': pedagogy_tags['verified_difficulty'],
+            'marks': pedagogy_tags.get('marks_recommended', 5),
             'metadata': pedagogy_tags,
             'quality_score': critique_history[-1].get('overall_quality', 'unknown'),
-            'compliance_score': validation['compliance_score']
+            'compliance_score': float(validation['compliance_score']),
+            'retrieval_sources': question_data.get('retrieval_sources', []),
+            'created_at': saved_question.created_at.isoformat() if saved_question and saved_question.created_at else None
         }
     
     def _get_unit_info(self, unit_id: str) -> Dict:
@@ -202,7 +214,7 @@ class QuestionGenerator:
         """Generate retrieval query from unit and CO."""
         # Use first few topics from unit
         topics = ", ".join(unit['topics'][:3])
-        return f"{topics} from {unit['title']}"
+        return f"{topics} from {unit['unit_name']}"
     
     def _build_question_data(
         self,
@@ -235,7 +247,7 @@ class QuestionGenerator:
             'course_code': self.syllabus['course_info']['course_code'],
             'course_name': self.syllabus['course_info']['course_name'],
             'unit_id': unit['unit_id'],
-            'unit_name': unit['title'],
+            'unit_name': unit['unit_name'],
             
             'quality_score': self._quality_to_score(critique_history[-1].get('overall_quality', 'fair')),
             'compliance_score': validation['compliance_score'],

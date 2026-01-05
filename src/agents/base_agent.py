@@ -32,9 +32,18 @@ class BaseAgent(ABC):
             
             # Check if model exists
             models = ollama.list()
-            model_names = [m['name'] for m in models.get('models', [])]
+            model_list = models.get('models', [])
             
-            if not any(self.model_name in name for name in model_names):
+            # Robust name extraction
+            model_names = []
+            for m in model_list:
+                if isinstance(m, dict):
+                    # Try different possible keys
+                    name = m.get('name') or m.get('model') or m.get('id', '')
+                    if name:
+                        model_names.append(name)
+            
+            if model_names and not any(self.model_name in name for name in model_names):
                 print(f"⚠️ Model '{self.model_name}' not found")
                 print(f"   Available models: {model_names}")
                 print(f"   Run: ollama pull {self.model_name}")

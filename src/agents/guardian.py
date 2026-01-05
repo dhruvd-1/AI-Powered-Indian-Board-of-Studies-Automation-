@@ -69,6 +69,15 @@ class GuardianAgent(BaseAgent):
                 "revision_guidance": ""
             }
         
+        # Ensure compliance_score is numeric
+        if 'compliance_score' in result:
+            try:
+                result['compliance_score'] = float(result['compliance_score'])
+            except (ValueError, TypeError):
+                result['compliance_score'] = 80.0
+        else:
+            result['compliance_score'] = 80.0
+        
         return result
     
     def _format_retrieved_content(self, chunks: List[Dict]) -> str:

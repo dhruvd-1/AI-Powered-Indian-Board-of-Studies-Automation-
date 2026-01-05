@@ -72,9 +72,14 @@ Thumbs.db
 *.tmp
 *~
 
-# Test files
+# Test files and reports (exclude temporary test files)
 test_*.py
 *_test.py
-final_backend_test.py
-test_backend_verification.py
+quick_health_check.py
+check_existing_data.py
+regression_results.txt
 BACKEND_VERIFICATION_REPORT.txt
+PRODUCTION_VERIFICATION_REPORT.txt
+FINAL_VERIFICATION_REPORT.txt
+EXECUTIVE_SUMMARY.txt
+FINAL_REGRESSION_TEST_REPORT.txt

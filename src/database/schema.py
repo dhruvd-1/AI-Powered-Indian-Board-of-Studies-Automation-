@@ -192,6 +192,23 @@ class QuestionBankDB:
             query = query.filter_by(faculty_id=faculty_id)
         return query.all()
     
+    def get_all_questions(self, limit: int = 100, offset: int = 0) -> list:
+        """
+        Get all questions with pagination support.
+        
+        Args:
+            limit: Maximum number of questions to return
+            offset: Number of questions to skip
+            
+        Returns:
+            List of Question objects ordered by created_at DESC
+        """
+        return self.session.query(Question)\
+            .order_by(Question.created_at.desc())\
+            .limit(limit)\
+            .offset(offset)\
+            .all()
+    
     def get_question_count(self, **filters) -> int:
         """Count questions matching filters."""
         return self.session.query(Question).filter_by(**filters).count()
