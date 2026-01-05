@@ -22,8 +22,11 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Embedding Configuration
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-CHUNK_SIZE = 800  # tokens
-CHUNK_OVERLAP = 200  # tokens
+
+# Chunking Configuration (Token-based)
+# Note: Using token estimation (~1.3 tokens per word) for accurate LLM context sizing
+CHUNK_SIZE = 800  # tokens (approximately 600 words or 3200 characters)
+CHUNK_OVERLAP = 200  # tokens (approximately 150 words or 800 characters)
 
 # Bloom Level → Retrieval Depth Mapping
 BLOOM_RETRIEVAL_MAP: Dict[int, int] = {
