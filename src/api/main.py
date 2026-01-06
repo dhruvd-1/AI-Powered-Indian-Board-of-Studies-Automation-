@@ -365,6 +365,166 @@ async def get_syllabus():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================================================
+# FILE MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.get("/api/documents", tags=["Files"])
+async def get_documents():
+    """Get list of uploaded documents"""
+    try:
+        from config.settings import RAW_DATA_DIR, PROCESSED_DATA_DIR
+
+        documents = []
+
+        # Scan raw directory
+        if RAW_DATA_DIR.exists():
+            for file_path in RAW_DATA_DIR.glob("*"):
+                if file_path.is_file():
+                    documents.append({
+                        "id": str(file_path.name),
+                        "filename": file_path.name,
+                        "size": file_path.stat().st_size,
+                        "type": file_path.suffix.lstrip('.'),
+                        "uploaded_at": datetime.fromtimestamp(file_path.stat().st_mtime).isoformat(),
+                        "processed": False
+                    })
+
+        return {"documents": documents, "total": len(documents)}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
+
+@app.post("/api/upload", tags=["Files"])
+async def upload_document(file: "UploadFile"):
+    """Upload a document"""
+    from fastapi import UploadFile, File
+    try:
+        from config.settings import RAW_DATA_DIR
+
+        # Ensure directory exists
+        RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Save file
+        file_path = RAW_DATA_DIR / file.filename
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        return {
+            "success": True,
+            "filename": file.filename,
+            "size": file_path.stat().st_size,
+            "message": "File uploaded successfully"
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@app.delete("/api/documents/{doc_id}", tags=["Files"])
+async def delete_document(doc_id: str):
+    """Delete a document"""
+    try:
+        from config.settings import RAW_DATA_DIR
+        file_path = RAW_DATA_DIR / doc_id
+
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        file_path.unlink()
+        return {"success": True, "message": "Document deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+# ============================================================================
+# PAPER GENERATION ENDPOINTS
+# ============================================================================
+
+class PaperGenerateRequest(BaseModel):
+    paperName: str
+    examType: str = "midterm"
+    totalMarks: int = 100
+    duration: int = 180
+    academicYear: str
+    semester: str
+    mode: str = "bank"  # bank, fresh, or hybrid
+    bloomDistribution: Dict[str, int]
+
+@app.post("/api/papers/generate", tags=["Papers"])
+async def generate_paper(request: PaperGenerateRequest):
+    """Generate an exam paper"""
+    try:
+        from src.paper.orchestrator import PaperOrchestrator
+        from src.paper.blueprint import PaperBlueprint
+        from config.settings import DATA_DIR
+
+        _, db, syllabus = get_generator()
+
+        # Create blueprint from request
+        blueprint = PaperBlueprint(
+            paper_name=request.paperName,
+            course_code=syllabus.get('course_code', 'UNKNOWN'),
+            total_marks=request.totalMarks,
+            duration_minutes=request.duration,
+            exam_type=request.examType,
+            bloom_distribution=request.bloomDistribution
+        )
+
+        # Initialize orchestrator
+        orchestrator = PaperOrchestrator(db)
+
+        # Generate paper based on mode
+        output_dir = DATA_DIR / "papers"
+        output_dir.mkdir(exist_ok=True)
+
+        if request.mode == "bank":
+            result = orchestrator.generate_paper_from_bank(blueprint, output_dir)
+        elif request.mode == "fresh":
+            result = orchestrator.generate_paper_fresh(blueprint, output_dir)
+        else:  # hybrid
+            result = orchestrator.generate_paper_hybrid(blueprint, output_dir)
+
+        return {
+            "success": True,
+            "paper_name": request.paperName,
+            "pdf_path": str(result.get('pdf_path', '')),
+            "questions_used": result.get('questions_used', 0),
+            "message": f"Paper generated successfully in {request.mode} mode"
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Paper generation failed: {str(e)}")
+
+@app.get("/api/papers", tags=["Papers"])
+async def get_papers():
+    """Get list of generated papers"""
+    try:
+        from config.settings import DATA_DIR
+        papers_dir = DATA_DIR / "papers"
+
+        if not papers_dir.exists():
+            return {"papers": [], "total": 0}
+
+        papers = []
+        for pdf_file in papers_dir.glob("*.pdf"):
+            papers.append({
+                "id": pdf_file.stem,
+                "name": pdf_file.stem,
+                "filename": pdf_file.name,
+                "created_at": datetime.fromtimestamp(pdf_file.stat().st_mtime).isoformat(),
+                "size": pdf_file.stat().st_size
+            })
+
+        return {"papers": papers, "total": len(papers)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list papers: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn
