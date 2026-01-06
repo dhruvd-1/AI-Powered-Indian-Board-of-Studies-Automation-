@@ -166,7 +166,7 @@
   }
 
   .loading-spinner-sm {
-    @apply w-5 h-5 border-3;
+    @apply w-5 h-5 border-2;
   }
 
   /* Utilities */

@@ -8,7 +8,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
@@ -397,9 +397,8 @@ async def get_documents():
         raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
 
 @app.post("/api/upload", tags=["Files"])
-async def upload_document(file: "UploadFile"):
+async def upload_document(file: UploadFile = File(...)):
     """Upload a document"""
-    from fastapi import UploadFile, File
     try:
         from config.settings import RAW_DATA_DIR
 

@@ -10,10 +10,9 @@ const GenerateQuestion = () => {
   const [formData, setFormData] = useState({
     unit_id: '',
     bloom_level: 3,
-    course_outcome: '',
+    co_id: '',
     difficulty: 'medium',
-    marks: 5,
-    question_type: 'short_answer'
+    faculty_id: 'default'
   });
   
   const bloomLevels = [
@@ -127,8 +126,8 @@ const GenerateQuestion = () => {
           </label>
           <input
             type="text"
-            name="course_outcome"
-            value={formData.course_outcome}
+            name="co_id"
+            value={formData.co_id}
             onChange={handleChange}
             required
             placeholder="e.g., CO1, CO2"
@@ -136,56 +135,20 @@ const GenerateQuestion = () => {
           />
         </div>
         
-        {/* Difficulty and Marks */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Difficulty *
-            </label>
-            <select
-              name="difficulty"
-              value={formData.difficulty}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Marks *
-            </label>
-            <input
-              type="number"
-              name="marks"
-              value={formData.marks}
-              onChange={handleChange}
-              required
-              min="1"
-              max="20"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-        
-        {/* Question Type */}
+        {/* Difficulty */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Question Type *
+            Difficulty *
           </label>
           <select
-            name="question_type"
-            value={formData.question_type}
+            name="difficulty"
+            value={formData.difficulty}
             onChange={handleChange}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="short_answer">Short Answer</option>
-            <option value="long_answer">Long Answer</option>
-            <option value="problem_solving">Problem Solving</option>
-            <option value="case_study">Case Study</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
           </select>
         </div>
         
