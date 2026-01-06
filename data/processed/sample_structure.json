@@ -1,0 +1,111 @@
+{
+  "course_code": "CS301",
+  "course_name": "Data Structures and Algorithms",
+  "credits": 4,
+  "course_outcomes": [
+    {
+      "co_id": "CO1",
+      "description": "Understand fundamental data structures and their applications",
+      "bloom_level": 2
+    },
+    {
+      "co_id": "CO2",
+      "description": "Analyze time and space complexity of algorithms",
+      "bloom_level": 4
+    },
+    {
+      "co_id": "CO3",
+      "description": "Implement various sorting and searching algorithms",
+      "bloom_level": 3
+    },
+    {
+      "co_id": "CO4",
+      "description": "Design efficient algorithms for problem solving",
+      "bloom_level": 6
+    },
+    {
+      "co_id": "CO5",
+      "description": "Evaluate trade-offs between different data structures",
+      "bloom_level": 5
+    }
+  ],
+  "units": [
+    {
+      "unit_id": "unit_1",
+      "unit_name": "Introduction to Data Structures",
+      "topics": [
+        "Arrays and their operations",
+        "Linked Lists - Single, Double, Circular",
+        "Stack and Queue implementations",
+        "Time and Space Complexity Analysis",
+        "Abstract Data Types"
+      ],
+      "co_mappings": ["CO1", "CO2", "CO3"],
+      "hours": 10
+    },
+    {
+      "unit_id": "unit_2",
+      "unit_name": "Trees and Graphs",
+      "topics": [
+        "Binary Trees and Binary Search Trees",
+        "Tree Traversals - Inorder, Preorder, Postorder",
+        "AVL Trees and Red-Black Trees",
+        "Graph Representations",
+        "Graph Traversal Algorithms - BFS and DFS"
+      ],
+      "co_mappings": ["CO1", "CO2", "CO3", "CO4"],
+      "hours": 12
+    },
+    {
+      "unit_id": "unit_3",
+      "unit_name": "Sorting and Searching",
+      "topics": [
+        "Bubble Sort, Selection Sort, Insertion Sort",
+        "Merge Sort and Quick Sort",
+        "Heap Sort and Radix Sort",
+        "Linear Search and Binary Search",
+        "Hashing Techniques"
+      ],
+      "co_mappings": ["CO2", "CO3", "CO5"],
+      "hours": 10
+    },
+    {
+      "unit_id": "unit_4",
+      "unit_name": "Advanced Data Structures",
+      "topics": [
+        "Heaps and Priority Queues",
+        "B-Trees and B+ Trees",
+        "Tries and Suffix Trees",
+        "Disjoint Set Union",
+        "Advanced Graph Algorithms"
+      ],
+      "co_mappings": ["CO4", "CO5"],
+      "hours": 10
+    }
+  ],
+  "program_outcomes": [
+    {
+      "po_id": "PO1",
+      "description": "Engineering knowledge"
+    },
+    {
+      "po_id": "PO2",
+      "description": "Problem analysis"
+    },
+    {
+      "po_id": "PO3",
+      "description": "Design/development of solutions"
+    },
+    {
+      "po_id": "PO5",
+      "description": "Modern tool usage"
+    }
+  ],
+  "co_po_matrix": {
+    "CO1": ["PO1", "PO2"],
+    "CO2": ["PO1", "PO2"],
+    "CO3": ["PO1", "PO3", "PO5"],
+    "CO4": ["PO2", "PO3"],
+    "CO5": ["PO2", "PO3"]
+  }
+}
