@@ -49,4 +49,42 @@ export const getSyllabus = async () => {
   return response.data;
 };
 
+// File Management
+export const getDocuments = async () => {
+  const response = await api.get('/documents');
+  return response.data;
+};
+
+export const uploadDocument = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const deleteDocument = async (docId) => {
+  const response = await api.delete(`/documents/${docId}`);
+  return response.data;
+};
+
+// Paper Generation
+export const generatePaper = async (paperData) => {
+  const response = await api.post('/papers/generate', paperData);
+  return response.data;
+};
+
+export const getPapers = async () => {
+  const response = await api.get('/papers');
+  return response.data;
+};
+
+export const getPaperById = async (paperId) => {
+  const response = await api.get(`/papers/${paperId}`);
+  return response.data;
+};
+
 export default api;
