@@ -281,19 +281,30 @@ class VectorStoreManager:
     def __init__(self, use_chromadb: bool = True):
         """
         Initialize vector store manager.
-        
+
         Args:
             use_chromadb: Try to use ChromaDB first (fallback to FAISS if unavailable)
         """
         self.stores: Dict[str, VectorStore] = {}
         self.embedding_model = EmbeddingModel()
-        
+
         # Determine which backend to use
         self.backend = self._select_backend(use_chromadb)
         print(f"🗄️  Using vector store backend: {self.backend}")
-        
+
         # Auto-discover existing stores
         self._discover_existing_stores()
+
+        # If no stores found, try to build from chunks.jsonl
+        if not self.stores:
+            from config.settings import PROCESSED_DATA_DIR
+            chunks_file = PROCESSED_DATA_DIR / "chunks.jsonl"
+            if chunks_file.exists():
+                print(f"📦 No vector stores found. Building from {chunks_file}...")
+                self.build_from_chunks(chunks_file)
+            else:
+                print("⚠️  No vector stores or chunks.jsonl found. Upload documents to get started.")
+
         print()
     
     def _select_backend(self, prefer_chromadb: bool) -> str:

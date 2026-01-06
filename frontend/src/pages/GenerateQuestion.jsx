@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { generateQuestion } from '../api/backend';
+import React, { useState, useEffect } from 'react';
+import { generateQuestion, getSyllabus } from '../api/backend';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../components/Loader';
 
@@ -7,6 +7,8 @@ const GenerateQuestion = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [syllabus, setSyllabus] = useState(null);
+  const [loadingSyllabus, setLoadingSyllabus] = useState(true);
   const [formData, setFormData] = useState({
     unit_id: '',
     bloom_level: 3,
@@ -14,6 +16,23 @@ const GenerateQuestion = () => {
     difficulty: 'medium',
     faculty_id: 'default'
   });
+
+  // Fetch syllabus on mount
+  useEffect(() => {
+    const fetchSyllabus = async () => {
+      try {
+        const data = await getSyllabus();
+        setSyllabus(data);
+      } catch (err) {
+        console.error('Failed to load syllabus:', err);
+        setError('Failed to load syllabus structure. Please ensure the backend is running.');
+      } finally {
+        setLoadingSyllabus(false);
+      }
+    };
+
+    fetchSyllabus();
+  }, []);
   
   const bloomLevels = [
     { value: 1, label: 'L1 - Remember', desc: 'Recall facts and basic concepts' },
@@ -56,6 +75,10 @@ const GenerateQuestion = () => {
   if (loading) {
     return <Loader message="Generating question with AI agents..." />;
   }
+
+  if (loadingSyllabus) {
+    return <Loader message="Loading syllabus..." />;
+  }
   
   return (
     <div className="max-w-3xl mx-auto">
@@ -68,22 +91,35 @@ const GenerateQuestion = () => {
       )}
       
       <form onSubmit={handleSubmit} className="card space-y-6">
+        {/* Course Info */}
+        {syllabus && (
+          <div className="p-4 bg-gradient-to-r from-indigo-50 to-violet-50 rounded-lg border border-indigo-200">
+            <h3 className="font-semibold text-indigo-900">{syllabus.course_code} - {syllabus.course_name}</h3>
+            <p className="text-sm text-indigo-700 mt-1">{syllabus.credits} Credits</p>
+          </div>
+        )}
+
         {/* Unit Selection */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Unit ID *
+            Unit *
           </label>
-          <input
-            type="text"
+          <select
             name="unit_id"
             value={formData.unit_id}
             onChange={handleChange}
             required
-            placeholder="e.g., unit_1, unit_2"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          >
+            <option value="">Select a unit...</option>
+            {syllabus?.units?.map((unit) => (
+              <option key={unit.unit_id} value={unit.unit_id}>
+                {unit.unit_name} ({unit.hours} hours)
+              </option>
+            ))}
+          </select>
           <p className="mt-1 text-xs text-gray-500">
-            Enter the unit identifier from the syllabus
+            Select the syllabus unit for this question
           </p>
         </div>
         
@@ -124,15 +160,23 @@ const GenerateQuestion = () => {
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Course Outcome (CO) *
           </label>
-          <input
-            type="text"
+          <select
             name="co_id"
             value={formData.co_id}
             onChange={handleChange}
             required
-            placeholder="e.g., CO1, CO2"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          >
+            <option value="">Select a course outcome...</option>
+            {syllabus?.course_outcomes?.map((co) => (
+              <option key={co.co_id} value={co.co_id}>
+                {co.co_id}: {co.description}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Select the learning outcome this question addresses
+          </p>
         </div>
         
         {/* Difficulty */}
