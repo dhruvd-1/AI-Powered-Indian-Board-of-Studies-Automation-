@@ -135,7 +135,7 @@ async def health_check():
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unavailable: {str(e)}")
 
-@app.post("/api/generate-question", response_model=QuestionResponse, tags=["Questions"])
+@app.post("/api/generate-question", tags=["Questions"])
 async def generate_question(request: QuestionGenerateRequest):
     """
     Generate a new question using AI pipeline
@@ -146,7 +146,7 @@ async def generate_question(request: QuestionGenerateRequest):
     try:
         generator, db, syllabus = get_generator()
         
-        # Call existing verified pipeline (NO MODIFICATIONS)
+        # Call existing verified pipeline
         result = generator.generate_question(
             unit_id=request.unit_id,
             co_id=request.co_id,
@@ -155,58 +155,75 @@ async def generate_question(request: QuestionGenerateRequest):
             faculty_id=request.faculty_id
         )
         
-        # Format response - ensure all fields are properly mapped
-        response = {
-            "id": result.get("question_id") or result.get("id"),
-            "question_text": result.get("question_text", ""),
-            "unit_id": result.get("unit_id", request.unit_id),
-            "unit_name": result.get("unit_name", ""),
-            "primary_co": result.get("primary_co", request.co_id),
-            "bloom_level": result.get("bloom_level", request.bloom_level),
-            "difficulty": result.get("difficulty", request.difficulty),
-            "compliance_score": result.get("compliance_score", 0.0),
-            "marks": result.get("marks", 0),
-            "retrieval_sources": result.get("retrieval_sources", []),
-            "created_at": result.get("created_at")
-        }
+        # Get question_id from result
+        question_id = result.get("question_id") or result.get("id")
         
-        # Ensure id is not None or empty
-        if not response["id"]:
+        if not question_id:
             raise ValueError("Question ID was not returned from generator")
         
-        return response
+        # Return response in format expected by frontend
+        return {
+            "success": True,
+            "question_id": question_id,
+            "message": "Question generated successfully",
+            "question": {
+                "id": question_id,
+                "question_text": result.get("question_text", ""),
+                "unit_id": result.get("unit_id", request.unit_id),
+                "unit_name": result.get("unit_name", ""),
+                "primary_co": result.get("primary_co", request.co_id),
+                "bloom_level": result.get("bloom_level", request.bloom_level),
+                "difficulty": result.get("difficulty", request.difficulty),
+                "compliance_score": result.get("compliance_score", 0.0),
+                "marks": result.get("marks", 0),
+                "retrieval_sources": result.get("retrieval_sources", []),
+                "created_at": result.get("created_at")
+            }
+        }
         
     except ValueError as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
+        return {
+            "success": False,
+            "message": str(e),
+            "question_id": None
+        }
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Generation failed: {str(e)}",
+            "question_id": None
+        }
 
 @app.get("/api/questions", tags=["Questions"])
 async def get_questions(
     unit_id: Optional[str] = None,
     bloom_level: Optional[int] = None,
     difficulty: Optional[str] = None,
-    limit: int = 100
+    course_outcome: Optional[str] = None,
+    page: int = 1,
+    limit: int = 10
 ):
-    """Get all questions with optional filters"""
+    """Get all questions with optional filters and pagination"""
     try:
         _, db, _ = get_generator()
         
         # Use existing database methods with increased limit for filtering
-        questions = db.get_all_questions(limit=limit * 2)  # Get extra to account for filtering
+        all_questions = db.get_all_questions(limit=1000)  # Get more for filtering
         
         # Apply filters
         filtered = []
-        for q in questions:
+        for q in all_questions:
             if unit_id and q.unit_id != unit_id:
                 continue
             if bloom_level is not None and q.bloom_level != bloom_level:
                 continue
             if difficulty and q.difficulty != difficulty:
+                continue
+            if course_outcome and q.primary_co != course_outcome:
                 continue
             
             # Parse retrieval sources JSON safely
@@ -231,16 +248,22 @@ async def get_questions(
                 "marks": q.marks or 0,
                 "compliance_score": q.compliance_score if q.compliance_score is not None else 0.0,
                 "created_at": q.created_at.isoformat() if q.created_at else None,
-                "retrieval_sources_count": len(sources)
+                "retrieval_sources_count": len(sources),
+                "question_type": q.question_type or "short_answer"
             })
-            
-            # Limit results
-            if len(filtered) >= limit:
-                break
+        
+        # Apply pagination
+        total = len(filtered)
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_questions = filtered[start_idx:end_idx]
         
         return {
-            "total": len(filtered),
-            "questions": filtered
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit,  # Ceiling division
+            "questions": paginated_questions
         }
         
     except Exception as e:
@@ -248,7 +271,7 @@ async def get_questions(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to fetch questions: {str(e)}")
 
-@app.get("/api/questions/{question_id}", response_model=QuestionResponse, tags=["Questions"])
+@app.get("/api/questions/{question_id}", tags=["Questions"])
 async def get_question_detail(question_id: int):
     """Get detailed information about a specific question"""
     try:
@@ -260,6 +283,9 @@ async def get_question_detail(question_id: int):
         
         # Parse JSON fields safely
         sources = []
+        critique_history = []
+        secondary_cos = []
+        
         if question.retrieval_sources:
             try:
                 if isinstance(question.retrieval_sources, str):
@@ -269,17 +295,55 @@ async def get_question_detail(question_id: int):
             except (json.JSONDecodeError, TypeError):
                 sources = []
         
+        if question.critique_history:
+            try:
+                if isinstance(question.critique_history, str):
+                    critique_history = json.loads(question.critique_history)
+                elif isinstance(question.critique_history, list):
+                    critique_history = question.critique_history
+            except (json.JSONDecodeError, TypeError):
+                critique_history = []
+        
+        if question.secondary_cos:
+            try:
+                if isinstance(question.secondary_cos, str):
+                    secondary_cos = json.loads(question.secondary_cos)
+                elif isinstance(question.secondary_cos, list):
+                    secondary_cos = question.secondary_cos
+            except (json.JSONDecodeError, TypeError):
+                secondary_cos = []
+        
+        # Convert compliance_score to nba_compliance_score for frontend compatibility
+        nba_score = question.compliance_score if question.compliance_score is not None else 0.0
+        # Scale to 0-100 if it's in 0-1 range
+        if nba_score <= 1.0:
+            nba_score = nba_score * 100
+        
         return {
             "id": question.id,
             "question_text": question.question_text or "",
+            "question_type": question.question_type or "short_answer",
+            "expected_answer_length": question.expected_answer_length or "",
             "unit_id": question.unit_id or "",
             "unit_name": question.unit_name or "",
             "primary_co": question.primary_co or "",
+            "secondary_cos": secondary_cos,
+            "secondary_co": ",".join(secondary_cos) if secondary_cos else "",  # Also as string for compatibility
             "bloom_level": question.bloom_level or 0,
             "difficulty": question.difficulty or "medium",
             "compliance_score": question.compliance_score if question.compliance_score is not None else 0.0,
+            "nba_compliance_score": int(nba_score),  # Frontend expects this field
+            "quality_score": question.quality_score if question.quality_score is not None else 0.0,
             "marks": question.marks or 0,
             "retrieval_sources": sources,
+            "context_used": "\n\n".join([s.get('content', '') for s in sources if isinstance(s, dict)]) if sources else "",  # Frontend expects this
+            "draft_version": question.draft_version or "",
+            "critique_history": critique_history,
+            "refinement_count": question.refinement_count or 0,
+            "review_status": question.review_status or "pending",
+            "answer_scheme": question.expected_answer_length or "",  # Frontend shows this
+            "agent_reasoning": "{}",  # TODO: Add actual agent reasoning if tracked
+            "validation_errors": question.faculty_feedback or "",  # Frontend shows validation warnings
             "created_at": question.created_at.isoformat() if question.created_at else None
         }
         

@@ -125,10 +125,16 @@ class BloomAdaptiveRetriever:
         # Check if vector store exists for this unit
         if not self.store_manager.get_store(unit_id):
             available_units = list(self.store_manager.stores.keys())
-            raise ValueError(
-                f"Invalid unit_id: '{unit_id}'\n"
-                f"Available units: {available_units}"
-            )
+            
+            # If no units available at all, create empty store for requested unit
+            if not available_units:
+                print(f"⚠️  No vector stores found. Creating empty store for {unit_id}")
+                self.store_manager.create_unit_store(unit_id)
+                return
+            
+            # If requested unit doesn't exist but others do, try to create it
+            print(f"⚠️  Unit {unit_id} not found. Creating empty store.")
+            self.store_manager.create_unit_store(unit_id)
     
     def _validate_bloom_level(self, bloom_level: int):
         """

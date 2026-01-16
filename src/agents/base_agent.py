@@ -82,6 +82,7 @@ class BaseAgent(ABC):
                 options={
                     'temperature': temperature,
                     'num_predict': max_tokens,
+                    'num_gpu': 0,  # Force CPU mode to avoid CUDA allocation errors
                 }
             )
             

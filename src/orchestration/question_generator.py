@@ -98,10 +98,13 @@ class QuestionGenerator:
         
         # Step 2: Draft
         print("Step 2/6: Drafting")
+        # Get course name - handle different syllabus structures
+        course_name = self.syllabus.get('course_name') or self.syllabus.get('course_info', {}).get('course_name', 'Unknown Course')
+        
         draft_result = self.drafter.process(
             retrieved_chunks=chunks,
             unit_name=unit['unit_name'],
-            course_name=self.syllabus['course_info']['course_name'],
+            course_name=course_name,
             co_description=co['description'],
             bloom_level=bloom_level,
             difficulty=difficulty

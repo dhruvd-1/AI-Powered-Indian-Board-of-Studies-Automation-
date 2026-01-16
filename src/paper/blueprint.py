@@ -35,14 +35,32 @@ class PaperBlueprint:
         self,
         paper_name: str,
         course_code: str,
-        exam_type: str = "midterm"
+        exam_type: str = "midterm",
+        total_marks: int = None,
+        duration_minutes: int = None,
+        bloom_distribution: Dict[str, int] = None
     ):
-        """Initialize blueprint."""
+        """Initialize blueprint with optional parameters."""
         self.paper_name = paper_name
         self.course_code = course_code
         self.exam_type = exam_type
         
         self.constraints = []
+        
+        # Set constraints if provided
+        if total_marks is not None and duration_minutes is not None:
+            self.set_total_marks(total_marks, duration_minutes)
+        
+        if bloom_distribution:
+            # Convert bloom_distribution from {"L1": 10, "L2": 20} to {1: 0.1, 2: 0.2}
+            total = sum(bloom_distribution.values())
+            if total > 0:
+                dist = {}
+                for key, value in bloom_distribution.items():
+                    # Extract number from "L1", "L2" etc.
+                    level = int(key.replace('L', '')) if isinstance(key, str) and key.startswith('L') else int(key)
+                    dist[level] = value / total
+                self.set_bloom_distribution(dist)
     
     def set_total_marks(self, total_marks: int, duration_minutes: int):
         """Set total marks and duration."""
